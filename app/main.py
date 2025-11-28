@@ -3,9 +3,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from app.routes.query_route import router as rag_router
-from app.routes.health_route import router as health_router
+# from app.routes.health_route import router as health_router
 from app.config import settings
 import logging
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,8 @@ app = FastAPI(
 
 # Include routers
 app.include_router(rag_router, prefix=settings.api_v1_prefix)
-app.include_router(health_router, prefix=settings.api_v1_prefix)
+# app.include_router(health_router, prefix=settings.api_v1_prefix)
+
 
 # Exception handlers (order matters: specific first, general last)
 @app.exception_handler(RequestValidationError)

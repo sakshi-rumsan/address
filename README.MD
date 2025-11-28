@@ -11,7 +11,7 @@ This project provides a FastAPI-based API for address validation and retrieval u
 - Health check endpoint
 
 ## Project Structure
-
+python -m spacy download en_core_web_sm
 ```
 app/
   config.py         # Loads settings from .env

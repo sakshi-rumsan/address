@@ -2,8 +2,10 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 from app.schemas import RAGQueryRequest
-from app.services.rag_service import rag_address_query
+
 from pydantic import BaseModel, Field
+
+from vector_db.search import vector_search
 
 router = APIRouter(prefix="/query-address", tags=["Address RAG"])
 
@@ -13,10 +15,7 @@ class MultiMatchResponse(BaseModel):
 @router.post("", response_model=MultiMatchResponse)
 async def query_address_endpoint(request: RAGQueryRequest):
     try:
-        results = rag_address_query(
-            partial_address=request.query,
-            top_k=request.top_k
-        )
+        results =  vector_search(request.query,2)
         return {"matches": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
