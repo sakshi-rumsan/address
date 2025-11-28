@@ -83,7 +83,7 @@ def vector_search(text: str, top_k: int = 2):
     query_result = search_normalized_address(text, top_k=top_k)
     for hit in query_result:
             all_results.append({
-                "query": addr,
+                "query": query_result,
                 "score": hit.get("score"),
                 "payload": hit.get("payload", {})
             })
