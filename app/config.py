@@ -14,11 +14,9 @@ class Settings(BaseSettings):
     qdrant_host: str
     qdrant_port: int
     ollama_host: str
-    api_key: str
     chat_model: str
     embedding_model: str
     collection_name: str
-    vector_dimension: int
 
     
     class Config:
