@@ -80,8 +80,8 @@ def vector_search(text: str, top_k: int = 2):
                 "score": hit.get("score"),
                 "payload": hit.get("payload", {})
             })
-        query_result = search_normalized_address(text, top_k=top_k)
-    for hit in results:
+    query_result = search_normalized_address(text, top_k=top_k)
+    for hit in query_result:
             all_results.append({
                 "query": addr,
                 "score": hit.get("score"),
