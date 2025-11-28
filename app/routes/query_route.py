@@ -17,7 +17,7 @@ class MultiMatchResponse(BaseModel):
 @router.post("", response_model=MultiMatchResponse)
 async def query_address_endpoint(request: RAGQueryRequest):
     try:
-        results, query_result_array = vector_search(request.query, 2)
+        results, query_result_array = vector_search(request.query, request.top_k)
         return {
             "raw_query": query_result_array,
             "extracted_address_matches": results

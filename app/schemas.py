@@ -4,7 +4,7 @@ from typing import Dict, Any
 class RAGQueryRequest(BaseModel):
     """Request model for address RAG query"""
     query: str = Field(..., description="Partial address to search for (e.g., '123 Main', 'ROAD', 'Suite 200')")
-    top_k: int = Field(default=3, ge=1, le=10, description="Number of similar addresses to retrieve")
+    top_k: int = Field(default=1, ge=1, le=10, description="Number of similar addresses to retrieve")
     temperature: float = Field(default=0.7, ge=0.0, le=1.0, description="LLM temperature for response generation (lower = more precise)")
 
 class RAGQueryResponse(BaseModel):
