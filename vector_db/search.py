@@ -67,6 +67,7 @@ def vector_search(text: str, top_k: int = 2):
     # Container for all Qdrant search results
     all_results = []
 
+
     # Iterate over each extracted address
     for addr in extracted_addresses:
         print(f"Searching Qdrant for address: {addr}")
@@ -74,6 +75,13 @@ def vector_search(text: str, top_k: int = 2):
         
         # Iterate over each result for the current address
         for hit in results:
+            all_results.append({
+                "query": addr,
+                "score": hit.get("score"),
+                "payload": hit.get("payload", {})
+            })
+        query_result = search_normalized_address(text, top_k=top_k)
+    for hit in results:
             all_results.append({
                 "query": addr,
                 "score": hit.get("score"),
