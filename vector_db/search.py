@@ -16,19 +16,18 @@ load_dotenv()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL")
 QDRANT_URL = os.getenv("QDRANT_URL")
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION")
+QDRANT_COLLECTION = os.getenv("COLLECTION_NAME")
 
 # -------------------
 # Ollama Embedder
 # -------------------
-embedder = OllamaEmbeddings(
-    base_url=OLLAMA_URL,
-    model="nomic-embed-text:latest"
-)
+embedder = OllamaEmbeddings(base_url=OLLAMA_URL, model="nomic-embed-text:latest")
+
 
 def get_embedding(text: str):
     """Get embedding vector for the query text."""
     return embedder.embed_query(text)
+
 
 def search_normalized_address(query: str, top_k: int = 5):
     """Search Qdrant collection using HTTP POST request."""
@@ -37,56 +36,65 @@ def search_normalized_address(query: str, top_k: int = 5):
     # Build Qdrant search URL from .env
     url = f"{QDRANT_URL}/collections/{QDRANT_COLLECTION}/points/search"
 
+    # Build headers - only add Authorization if API key is provided
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
+
+    api_key = os.getenv("QDRANT_API_KEY", "")
+    if api_key:
+        headers["api-key"] = api_key
 
     payload = {
         "vector": query_vector,
         "limit": top_k,
         "with_payload": True,
-        "with_vectors": False
+        "with_vectors": False,
     }
 
     response = requests.post(url, json=payload, headers=headers)
     response.raise_for_status()
     data = response.json()
-
+    print(f"Qdrant search response data: {data}")
     return data.get("result", [])
+
 
 # -------------------
 # Test
 def vector_search(text: str, top_k: int = 2):
     # 1️⃣ Extract addresses from text
-    extracted_addresses = run_workflow (text)
-  # This is already a list
+    extracted_addresses = run_workflow(text)
+    # This is already a list
     print(extracted_addresses)
 
     # 2️⃣ Search Qdrant for each extracted address and collect all results
 
     # Container for all Qdrant search results
     all_results = []
-    query_result_array=[]
-
+    query_result_array = []
 
     # Iterate over each extracted address
     for addr in extracted_addresses:
         print(f"Searching Qdrant for address: {addr}")
         results = search_normalized_address(addr, top_k=top_k)
-        
+
         # Iterate over each result for the current address
         for hit in results:
-            all_results.append({
-                "query": addr,
-                "score": hit.get("score"),
-                "payload": hit.get("payload", {})
-            })
+            all_results.append(
+                {
+                    "query": addr,
+                    "score": hit.get("score"),
+                    "payload": hit.get("payload", {}),
+                }
+            )
     query_result = search_normalized_address(text, top_k=1)
     for hit in query_result:
-            query_result_array.append({
+        query_result_array.append(
+            {
                 "query": text,
                 "score": hit.get("score"),
-                "payload": hit.get("payload", {})
-            })
-    
-    return all_results,query_result_array
+                "payload": hit.get("payload", {}),
+            }
+        )
+
+    return all_results, query_result_array

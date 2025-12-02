@@ -6,7 +6,9 @@ from langchain_core.output_parsers import JsonOutputParser
 from app.services.embedding_service import get_embedding
 from app.services.qdrant_service import qdrant_service
 from app.config import settings
-from typing import List, Dict, Any
+from app.database import ConversationHistory, SessionLocal
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +19,13 @@ llm = ChatOllama(
 )
 
 # FULL ORIGINAL PROMPT — ALL {} IN THE EXAMPLE ARE DOUBLED {{}} SO LANGCHAIN DOES NOT BREAK
-MPLIFY_150_PROMPT = """You are an AI assistant specialized in parsing and formatting addresses according to the Mplify 150 Installation Place and Service Site Management standard. Your task is to extract and structure address information into the exact Installation Place Fielded Address Representation format as defined in the specification.
+MPLIFY_150_PROMPT = """Hello! I'm your AI assistant specialized in parsing and formatting addresses according to the Mplify 150 Installation Place and Service Site Management standard. I'm here to help you extract and structure address information into the exact Installation Place Fielded Address Representation format as defined in the specification.
+
+Conversation History:
+{conversation_history}
 
 Core Directive
-Parse any input address and return it in the exact Mplify 150 Installation Place Fielded Address Representation format, following all requirements and constraints specified in the standard.
+Parse any input address and return it in the exact Mplify 150 Installation Place Fielded Address Representation format, following all requirements and constraints specified in the standard. Use the conversation history above to understand context and user preferences from previous queries, and provide a personalized experience based on our previous interactions.
 
 Required Output Format
 Structure all addresses using these exact attributes from Table 3 and Table 4:
@@ -104,13 +109,86 @@ parser = JsonOutputParser()
 chain = prompt | llm | parser
 
 
-def rag_address_query(partial_address: str, top_k: int = 3) -> List[Dict[str, Any]]:
-    logger.info(f"RAG Query: '{partial_address}' | top_k={top_k}")
+def get_conversation_history(session_id: str, limit: int = 5) -> str:
+    """Retrieve recent conversation history for a session."""
+    db = SessionLocal()
+    try:
+        history = (
+            db.query(ConversationHistory)
+            .filter(ConversationHistory.session_id == session_id)
+            .order_by(ConversationHistory.timestamp.desc())
+            .limit(limit)
+            .all()
+        )
+
+        if not history:
+            return ""
+
+        # Format history for context (most recent first, so reverse)
+        history_text = []
+        for record in reversed(history):
+            history_text.append(f"User Query: {record.query}")
+            if isinstance(record.response, dict):
+                history_text.append(f"Response: {record.response}")
+
+        return "\n".join(history_text[-10:])  # Last 10 lines max
+    finally:
+        db.close()
+
+
+def save_to_history(
+    session_id: str, query: str, response: Dict[str, Any], score: Optional[str] = None
+):
+    """Save query and response to conversation history."""
+    db = SessionLocal()
+    try:
+        record = ConversationHistory(
+            session_id=session_id,
+            query=query,
+            response=response,
+            score=score,
+            timestamp=datetime.utcnow(),
+        )
+        db.add(record)
+        db.commit()
+        logger.debug(f"Saved conversation to history: session={session_id}")
+    except Exception as e:
+        logger.error(f"Failed to save conversation history: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def rag_address_query(
+    partial_address: str, top_k: int = 3, session_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    RAG-based address query with optional conversation memory.
+
+    Args:
+        partial_address: The address query
+        top_k: Number of results to return
+        session_id: Optional session ID for conversation memory
+    """
+    logger.info(
+        f"RAG Query: '{partial_address}' | top_k={top_k} | session={session_id}"
+    )
+
+    # Get conversation history if session_id provided
+    history_context = ""
+    if session_id:
+        history_context = get_conversation_history(session_id, limit=3)
+        if history_context:
+            logger.debug(f"Retrieved conversation history for session {session_id}")
 
     query_vector = get_embedding(partial_address)
-    hits = qdrant_service.search(vector=query_vector, top_k=top_k + 2, score_threshold=0.70)
+    hits = qdrant_service.search(
+        vector=query_vector, top_k=top_k + 2, score_threshold=0.70
+    )
 
     if not hits:
+        if session_id:
+            save_to_history(session_id, partial_address, {"error": "no_results"})
         return []
 
     results = []
@@ -121,17 +199,30 @@ def rag_address_query(partial_address: str, top_k: int = 3) -> List[Dict[str, An
             continue
 
         try:
-            structured = chain.invoke({"retrieved_address": raw_address})
-            results.append({
-                "score": round(float(hit.score), 4),
-                "address": structured
-            })
+            structured = chain.invoke(
+                {
+                    "retrieved_address": raw_address,
+                    "conversation_history": history_context
+                    or "No previous conversation.",
+                }
+            )
+            result = {"score": round(float(hit.score), 4), "address": structured}
+            results.append(result)
+
+            # Save first result to history
+            if session_id and len(results) == 1:
+                save_to_history(
+                    session_id, partial_address, structured, score=str(result["score"])
+                )
+
         except Exception as e:
             logger.warning(f"Failed to parse one result: {e}")
             # Still include raw version as fallback
-            results.append({
-                "score": round(float(hit.score), 4),
-                "address": {"raw_address": raw_address, "error": "parsing_failed"}
-            })
+            results.append(
+                {
+                    "score": round(float(hit.score), 4),
+                    "address": {"raw_address": raw_address, "error": "parsing_failed"},
+                }
+            )
 
     return results
