@@ -2,6 +2,9 @@
 
 import re
 import os
+from qdrant_client import  AsyncQdrantClient,models
+from qdrant_client.models import SearchParams
+
 import requests
 from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings
@@ -17,6 +20,8 @@ load_dotenv()
 OLLAMA_URL = os.getenv("OLLAMA_URL")
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_COLLECTION = os.getenv("COLLECTION_NAME")
+client = AsyncQdrantClient(url="http://localhost:6333")
+
 
 # -------------------
 # Ollama Embedder
@@ -24,44 +29,75 @@ QDRANT_COLLECTION = os.getenv("COLLECTION_NAME")
 embedder = OllamaEmbeddings(base_url=OLLAMA_URL, model="nomic-embed-text:latest")
 
 
+import json
+
+import json
+
+def clean_qdrant_response(search_result):
+    # Parse JSON if search_result.json() returns a string
+    data = search_result.json()
+    if isinstance(data, str):
+        data = json.loads(data)  # convert string -> dict
+
+    cleaned_points = []
+
+    for point in data.get("points", []):
+        payload = point.get("payload", {})
+        cleaned_points.append({
+            "id": point.get("id"),
+            "score": point.get("score"),
+            "normalized_address": payload.get("normalized_address"),
+            "address_type": payload.get("address_type"),
+            "street_name": payload.get("street_name"),
+            "locality": payload.get("locality"),
+            "town": payload.get("town"),
+            "postcode": payload.get("postcode"),
+            "region": payload.get("region"),
+            "tlc": payload.get("tlc")
+        })
+
+    return {"results": cleaned_points}
+
+
+# Usage
+# cleaned = clean_qdrant_response(search_result)
+# print(json.dumps(cleaned, indent=2))
+
+
+
 def get_embedding(text: str):
     """Get embedding vector for the query text."""
     return embedder.embed_query(text)
 
 
-def search_normalized_address(query: str, top_k: int = 5):
+async def search_normalized_address(query: str, top_k: int = 1):
     """Search Qdrant collection using HTTP POST request."""
     query_vector = get_embedding(query)
+    search_result =    await client.query_points(
+      collection_name="new-zealand",
+      query=query_vector,  # type: ignore
+      with_payload= True,
+      with_vectors= False,
+      limit=top_k,
+      
+      search_params=SearchParams(hnsw_ef=128)
+      
+
+   )
 
     # Build Qdrant search URL from .env
-    url = f"{QDRANT_URL}/collections/{QDRANT_COLLECTION}/points/search"
+
 
     # Build headers - only add Authorization if API key is provided
-    headers = {
-        "Content-Type": "application/json",
-    }
+    cleaned = clean_qdrant_response(search_result)
+    print(json.dumps(cleaned, indent=2))
 
-    api_key = os.getenv("QDRANT_API_KEY", "")
-    if api_key:
-        headers["api-key"] = api_key
-
-    payload = {
-        "vector": query_vector,
-        "limit": top_k,
-        "with_payload": True,
-        "with_vectors": False,
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    response.raise_for_status()
-    data = response.json()
-    print(f"Qdrant search response data: {data}")
-    return data.get("result", [])
+    return cleaned
 
 
 # -------------------
 # Test
-def vector_search(text: str, top_k: int = 2):
+async def vector_search(text: str, top_k: int = 2):
     # 1️⃣ Extract addresses from text
     extracted_addresses = run_workflow(text)
     # This is already a list
@@ -76,24 +112,24 @@ def vector_search(text: str, top_k: int = 2):
     # Iterate over each extracted address
     for addr in extracted_addresses:
         print(f"Searching Qdrant for address: {addr}")
-        results = search_normalized_address(addr, top_k=top_k)
+        results = await search_normalized_address(addr, top_k=top_k)
 
         # Iterate over each result for the current address
-        for hit in results:
-            all_results.append(
+        
+        all_results.append(
                 {
                     "query": addr,
-                    "score": hit.get("score"),
-                    "payload": hit.get("payload", {}),
+                    "payload": results
+               
                 }
             )
-    query_result = search_normalized_address(text, top_k=1)
-    for hit in query_result:
-        query_result_array.append(
+    query_result = await search_normalized_address(text, top_k=2)
+    
+    query_result_array.append(
             {
                 "query": text,
-                "score": hit.get("score"),
-                "payload": hit.get("payload", {}),
+                "payload": query_result,
+            
             }
         )
 
