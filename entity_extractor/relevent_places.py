@@ -1,6 +1,8 @@
+import os
 import json
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 from dataclasses import dataclass
 from langchain_ollama import ChatOllama
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
@@ -17,10 +19,10 @@ from entity_extractor.search_feild import SearchFeilds
 
 
 
-
+load_dotenv()
 class Settings:
-    model_name: str = "llama3.1:latest"
-    ollama_url: str = "https://jo3m4y06rnnwhaz.askbhunte.com"
+    model_name: str =  os.getenv("CHAT_MODEL")
+    ollama_url: str = os.getenv("OLLAMA_URL")
 
 def get_settings():
     return Settings()

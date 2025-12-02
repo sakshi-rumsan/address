@@ -19,7 +19,7 @@ from entity_extractor.cache_feild import save_field_to_single_json
 load_dotenv()
 OLLAMA_URL = os.getenv("OLLAMA_URL")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-QDRANT_COLLECTION =  "new-zealand"
+QDRANT_COLLECTION = os.getenv("COLLECTION_NAME")
 
 # -------------------
 # Initialize clients
