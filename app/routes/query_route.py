@@ -39,7 +39,7 @@ async def query_address_endpoint(request: RAGQueryRequest):
 )
         if result ==[]:
         
-            results, query_result_array = await vector_search(request.query, request.top_k)
+            results, query_result_array = await vector_search(request.query, 5)
             result =  results + query_result_array
 
         llm_response = rag_address_query(
