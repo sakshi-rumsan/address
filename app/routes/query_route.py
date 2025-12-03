@@ -29,27 +29,25 @@ class MultiMatchResponse(BaseModel):
 async def query_address_endpoint(request: RAGQueryRequest):
 
 
-    try:
-        filter_dict = await run_workflow()
-        result =await search_qdrant_by_filter(
-   
-    filter_dict,
-    request.query
+    merged_best_matches = await run_workflow(request.query)  # returns dict
+    result = []
+    result = merged_best_matches
 
-)
-        if result ==[]:
-        
-            results, query_result_array = await vector_search(request.query, 5)
-            result =  results + query_result_array
 
-        llm_response = rag_address_query(
-    str( result ),request.query,  request.session_id
-) 
-        print(result)
-       
 
-        
+    print("Final Qdrant Results:", result)
+# <-- flatten here
 
-        return {"llm_response": str(llm_response), "extracted_address_matches": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Fallback vector search if no results
+    if not result:
+        results, query_result_array = await vector_search(request.query, 5)
+        result = results + query_result_array  # assuming both are lists
+
+    # Call your RAG/LLM query
+    llm_response = rag_address_query(str(result), request.query, request.session_id)
+
+    # Return properly formatted dict
+    return {
+        "llm_response": str(llm_response),
+        "extracted_address_matches": result  # now always list of dicts
+    }

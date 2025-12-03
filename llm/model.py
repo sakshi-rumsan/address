@@ -118,7 +118,8 @@ def rag_address_query(
      response_text = str(response)
 
     # Save response to conversation history
+    print(response_text)
     if session_id:
-        save_to_history(session_id, partial_address, response_text, score="0")
+        save_to_history(session_id, user_query, response_text, score="0")
 
     return response_text

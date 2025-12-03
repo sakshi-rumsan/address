@@ -52,8 +52,7 @@ def fuzzy_match_address(query_values: list[str], candidate_values: list[str],fie
         OR
         (None, 0, None) if no score >= threshold
     """
-    if field_name == "region":
-        print(candidate_values)
+
         
 
     best_global_match = None

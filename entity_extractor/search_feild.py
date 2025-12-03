@@ -96,7 +96,7 @@ async def SearchFeilds(feild_name: str):
 
     # 2️⃣ Check if field already exists
     if feild_name in existing_fields:
-        print(f"Field '{feild_name}' already in {json_file}, skipping search.")
+
         # if feild_name =="region":
         #  print(existing_fields[feild_name])
         return existing_fields[feild_name]
@@ -126,45 +126,44 @@ def get_embedding(text: str):
     return embedder.embed_query(text)
 
 from qdrant_client.models import Filter, FieldCondition, MatchText
+from qdrant_client.models import Filter, FieldCondition, MatchText
 
 async def search_qdrant_by_filter(
     filter_dict: dict,
     query: str,
     limit: int = 1
 ):
-    print(filter_dict)
+    print("Filter dict received:", filter_dict)
    
-    # filter_dict = {'house_high': '46', 'locality': 'GREENMEADOWS', 'town': 'NAPIER'}
     # Get embedding vector for query
     query_vector = get_embedding(query)
 
-    # Build Qdrant Filter, skipping None or empty string values
-    must_conditions = [
-        FieldCondition(key=key, match=MatchText(text=value))
-        for key, value in filter_dict.items()
-        if value not in (None, "")
-    ]
+    # Build Qdrant Filter, using best_match and skipping None/empty
+    must_conditions = []
+    for key, val in filter_dict.items():
+        # Ensure val is a dict and best_match is not empty
+        if isinstance(val, dict) and val.get("best_match"):
+            must_conditions.append(FieldCondition(
+                key=key,
+                match=MatchText(text=val["best_match"])
+            ))
 
     my_filter = Filter(must=must_conditions) if must_conditions else None
 
-    # Perform the search (can use dummy vector if you want metadata-only search)
+    # Perform the search
     search_result = await client.query_points(
-    collection_name=QDRANT_COLLECTION,
-    query=query_vector,
-    limit=limit,
-    query_filter=my_filter,
-    with_payload=True,
-    with_vectors=False
-)
+        collection_name=QDRANT_COLLECTION,
+        query=query_vector,
+        limit=limit,
+        query_filter=my_filter,
+        with_payload=True,
+        with_vectors=False
+    )
 
-# search_result is a list of ScoredPoint
-    points = search_result.points
-
+    # search_result.points is a list of ScoredPoint
     clean_results = [
-    {"id": p.id, "score": p.score, "payload": p.payload} for p in points
-]
+        {"id": p.id, "score": p.score, "payload": p.payload} for p in search_result.points
+    ]
 
-
-    print(clean_results)
+    print("Search results:", clean_results)
     return clean_results
-
