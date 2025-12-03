@@ -2,21 +2,25 @@
 from qdrant_client import QdrantClient
 from app.config import settings
 
+
 class QdrantService:
     def __init__(self):
         self.client = QdrantClient(
             host=settings.qdrant_host,
             port=settings.qdrant_port,
-            timeout=30
+            api_key=settings.qdrant_api_key,
+            timeout=60,
         )
-        self.collection_name = settings.collection_name  # "new_zealand"
+        self.collection_name = settings.collection_name
         # Auto-detect client version and pick correct method
         self._use_modern_search = hasattr(self.client, "search")
 
         if not self.client.collection_exists(self.collection_name):
             raise ValueError(f"Collection '{self.collection_name}' does not exist!")
 
-    def search(self, vector: list[float], top_k: int = 3, score_threshold: float = 0.75):
+    def search(
+        self, vector: list[float], top_k: int = 3, score_threshold: float = 0.75
+    ):
         """
         Works with BOTH old (<1.6) and new (>=1.6) qdrant-client versions
         """
@@ -30,7 +34,7 @@ class QdrantService:
                     score_threshold=score_threshold,
                 )
             else:
-                #fallback using scroll + manual cosine similarity
+                # fallback using scroll + manual cosine similarity
                 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
                 from qdrant_client.http.models import PointStruct
                 import numpy as np
@@ -68,6 +72,7 @@ class QdrantService:
 
         except Exception as e:
             raise ValueError(f"Search failed in '{self.collection_name}': {str(e)}")
+
 
 # Keep singleton
 qdrant_service = QdrantService()

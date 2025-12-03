@@ -1,6 +1,8 @@
 from fuzzywuzzy import fuzz, process
 from entity_extractor.model import Address
 from dataclasses import dataclass
+
+
 @dataclass
 class SearchFeild:
     field_name: str
@@ -8,7 +10,6 @@ class SearchFeild:
 
     def __repr__(self):
         return f"SearchFeild(field='{self.field_name}', value='{self.value}')"
-
 
 
 # ------------------------------------------
@@ -42,7 +43,10 @@ def search_address_fields(address: Address, non_empty_fields: dict[str, list[str
 # ---------------------------------------------------------
 from fuzzywuzzy import process, fuzz
 
-def fuzzy_match_address(query_values: list[str], candidate_values: list[str],field_name:str, threshold=98):
+
+def fuzzy_match_address(
+    query_values: list[str], candidate_values: list[str], field_name: str, threshold=98
+):
     """
     query_values: list of extracted values from LLM (e.g. ["Green meadows", "Greenmeadows"])
     candidate_values: values from Qdrant metadata
@@ -53,17 +57,13 @@ def fuzzy_match_address(query_values: list[str], candidate_values: list[str],fie
         (None, 0, None) if no score >= threshold
     """
 
-        
-
     best_global_match = None
     best_global_score = 0
     best_from_query = None
 
     for qv in query_values:
         match, score = process.extractOne(
-            qv,
-            candidate_values,
-            scorer=fuzz.WRatio  # BEST overall fuzzy scorer
+            qv, candidate_values, scorer=fuzz.WRatio  # BEST overall fuzzy scorer
         )
 
         if score > best_global_score:

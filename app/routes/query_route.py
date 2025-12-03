@@ -1,25 +1,18 @@
 # app/routes/query_route.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from typing import List, Dict, Any
-from app.schemas import RAGQueryRequest
-
 from pydantic import BaseModel, Field
 
-
+from app.schemas import RAGQueryRequest
 from entity_extractor.relevent_places import run_workflow
-from entity_extractor.search_feild import search_qdrant_by_filter
 from llm.model import rag_address_query
 from vector_db.search import vector_search
-from app.database import ConversationHistory, SessionLocal
-from datetime import datetime
 
 router = APIRouter(prefix="/query-address", tags=["Address RAG"])
 
 
 class MultiMatchResponse(BaseModel):
-    llm_response: str = Field(
-        ..., description="List of matching addresses with scores"
-    )
+    llm_response: str = Field(..., description="List of matching addresses with scores")
     extracted_address_matches: List[Dict[str, Any]] = Field(
         ..., description="List of matching addresses with scores"
     )
@@ -27,7 +20,7 @@ class MultiMatchResponse(BaseModel):
 
 @router.post("", response_model=MultiMatchResponse)
 async def query_address_endpoint(request: RAGQueryRequest):
-    try:  
+    try:
         # Get best matches
         merged_best_matches = await run_workflow(request.query)  # returns dict
         result = merged_best_matches
@@ -44,15 +37,16 @@ async def query_address_endpoint(request: RAGQueryRequest):
             result = results + query_result_array  # assuming both are lists
 
         # Call your RAG/LLM query (await if async)
-        llm_response = await rag_address_query(str(result), request.query, request.session_id)
+        llm_response = await rag_address_query(
+            str(result), request.query, request.session_id
+        )
 
         # Return properly formatted dict
         return {
             "llm_response": str(llm_response),
-            "extracted_address_matches": result  # always list of dicts
+            "extracted_address_matches": result,  # always list of dicts
         }
 
     except Exception as e:
         print("Error in query_address_endpoint:", e)
         raise  # re-raise to propagate
-

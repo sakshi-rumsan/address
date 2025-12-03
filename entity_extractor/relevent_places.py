@@ -1,27 +1,29 @@
 import os
 import json
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from entity_extractor.fuzzy_wazzy import fuzzy_match_address, get_non_empty_fields
+from entity_extractor.fuzzy_wuzzy import fuzzy_match_address, get_non_empty_fields
 from entity_extractor.model import Address
-from entity_extractor.search_feild import SearchFeilds, search_qdrant_by_filter
+from entity_extractor.search_field import SearchFeilds, search_qdrant_by_filter
 
 # -----------------------------
 # Load environment variables
 # -----------------------------
 load_dotenv()
 
+
 class Settings:
     model_name: str = os.getenv("CHAT_MODEL")
     ollama_url: str = os.getenv("OLLAMA_URL")
 
+
 def get_settings():
     return Settings()
+
 
 # -----------------------------
 # Address Analyzer
@@ -29,15 +31,15 @@ def get_settings():
 class AddressAnalyzer:
     """Analyze a user query and return structured address metadata."""
 
-    def __init__(self, model_name: Optional[str] = None, ollama_url: Optional[str] = None):
+    def __init__(
+        self, model_name: Optional[str] = None, ollama_url: Optional[str] = None
+    ):
         self.settings = get_settings()
         self.model_name = model_name or self.settings.model_name
         self.ollama_url = ollama_url or self.settings.ollama_url
 
         self.llm = ChatOllama(
-            model=self.model_name,
-            base_url=self.ollama_url,
-            timeout=300
+            model=self.model_name, base_url=self.ollama_url, timeout=300
         )
 
         self.llm_with_tools = self.llm.bind_tools([Address])
@@ -71,10 +73,9 @@ User: "I live at 10 King St, Wellington. My brother lives in Palmerston North."
 
 
 """
-            self._prompt = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                ("human", "{input}")
-            ])
+            self._prompt = ChatPromptTemplate.from_messages(
+                [("system", system_prompt), ("human", "{input}")]
+            )
         return self._prompt
 
     # -----------------------------
@@ -151,6 +152,7 @@ User: "I live at 10 King St, Wellington. My brother lives in Palmerston North."
             split_addresses.append(Address(**addr_dict))
         return split_addresses
 
+
 # -----------------------------
 # Workflow
 import os
@@ -162,21 +164,24 @@ from langchain_ollama import ChatOllama
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from entity_extractor.fuzzy_wazzy import fuzzy_match_address, get_non_empty_fields
+from entity_extractor.fuzzy_wuzzy import fuzzy_match_address, get_non_empty_fields
 from entity_extractor.model import Address
-from entity_extractor.search_feild import SearchFeilds
+from entity_extractor.search_field import SearchFeilds
 
 # -----------------------------
 # Load environment variables
 # -----------------------------
 load_dotenv()
 
+
 class Settings:
     model_name: str = os.getenv("CHAT_MODEL")
     ollama_url: str = os.getenv("OLLAMA_URL")
 
+
 def get_settings():
     return Settings()
+
 
 # -----------------------------
 # Address Analyzer
@@ -184,15 +189,15 @@ def get_settings():
 class AddressAnalyzer:
     """Analyze a user query and return structured address metadata."""
 
-    def __init__(self, model_name: Optional[str] = None, ollama_url: Optional[str] = None):
+    def __init__(
+        self, model_name: Optional[str] = None, ollama_url: Optional[str] = None
+    ):
         self.settings = get_settings()
         self.model_name = model_name or self.settings.model_name
         self.ollama_url = ollama_url or self.settings.ollama_url
 
         self.llm = ChatOllama(
-            model=self.model_name,
-            base_url=self.ollama_url,
-            timeout=300
+            model=self.model_name, base_url=self.ollama_url, timeout=300
         )
 
         self.llm_with_tools = self.llm.bind_tools([Address])
@@ -223,10 +228,9 @@ User: "I live at 10 King St, Wellington. My brother lives in Palmerston North."
 [{{"house_low":["10"], "house_high":[], "locality":["King St"], "town":["Wellington"], "postcode":[], "region":[]}},
  {{"house_low":[], "house_high":[], "locality":[], "town":["Palmerston North"], "postcode":[], "region":[]}}]
 """
-            self._prompt = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                ("human", "{input}")
-            ])
+            self._prompt = ChatPromptTemplate.from_messages(
+                [("system", system_prompt), ("human", "{input}")]
+            )
         return self._prompt
 
     # -----------------------------
@@ -302,9 +306,13 @@ User: "I live at 10 King St, Wellington. My brother lives in Palmerston North."
         split_addresses = []
 
         for i in range(max_len):
-            addr_dict = {key: [values[i]] if i < len(values) else [] for key, values in normalized.items()}
+            addr_dict = {
+                key: [values[i]] if i < len(values) else []
+                for key, values in normalized.items()
+            }
             split_addresses.append(Address(**addr_dict))
         return split_addresses
+
 
 # -----------------------------
 # Workflow
@@ -348,14 +356,12 @@ async def run_workflow(user_query: str):
         for field_name, values in non_empty_fields.items():
             if field_name in qdrant_candidates:
                 best_match, score, original = fuzzy_match_address(
-                    values,
-                    qdrant_candidates[field_name],
-                    field_name
+                    values, qdrant_candidates[field_name], field_name
                 )
                 best_matches[field_name] = {
                     "original": original,
                     "best_match": best_match,
-                    "score": score
+                    "score": score,
                 }
 
         # Keep one entry per parsed address
@@ -369,12 +375,8 @@ async def run_workflow(user_query: str):
         if isinstance(filter_dict, dict):
             res = await search_qdrant_by_filter(filter_dict, query=user_query)
             if isinstance(res, list) and res:
-                final_results.append({
-                    "address_key": addr_key,
-                    "results": res
-                })
+                final_results.append({"address_key": addr_key, "results": res})
 
     print("\n=== Final Qdrant Results ===")
-
 
     return final_results

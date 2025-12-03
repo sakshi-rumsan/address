@@ -100,7 +100,7 @@ def rag_address_query(
         if session_id
         else "No previous conversation."
     )
-    
+
     logger.debug(f"Using conversation history:\n{history_context}")
 
     # Format the prompt
@@ -113,9 +113,9 @@ def rag_address_query(
     # Generate LLM response
     response = llm.invoke(prompt_text)
     if hasattr(response, "content"):
-     response_text = response.content
+        response_text = response.content
     else:
-     response_text = str(response)
+        response_text = str(response)
 
     # Save response to conversation history
     print(response_text)

@@ -1,10 +1,10 @@
-from vector_db.entity_extractor import extract_address_components_with_fuzzy
-
-
 import spacy
 import re
 
+from vector_db.entity_extractor import extract_address_components_with_fuzzy
+
 nlp = spacy.load("en_core_web_sm")
+
 
 def normalize_component(part):
     # Normalize country codes
@@ -19,14 +19,21 @@ def extract_addresses_linewise(text: str):
     sentences = [sent.text.strip() for sent in doc.sents]
 
     addresses = []
-    street_pattern = r'\d+\s+[A-Za-z0-9\s]+(?:Rd|Road|St|Street|Ave|Avenue|Lane|Ln|Drive|Dr)\b'
-    postcode_pattern = r'\b\d{4}\b'
-    country_pattern = r'\b(NZ|New Zealand)\b'
+    street_pattern = (
+        r"\d+\s+[A-Za-z0-9\s]+(?:Rd|Road|St|Street|Ave|Avenue|Lane|Ln|Drive|Dr)\b"
+    )
+    postcode_pattern = r"\b\d{4}\b"
+    country_pattern = r"\b(NZ|New Zealand)\b"
 
     for sent in sentences:
-        if re.search(street_pattern, sent) or re.search(postcode_pattern, sent) or re.search(country_pattern, sent, flags=re.IGNORECASE):
+        if (
+            re.search(street_pattern, sent)
+            or re.search(postcode_pattern, sent)
+            or re.search(country_pattern, sent, flags=re.IGNORECASE)
+        ):
             addresses.append(sent)
     return addresses
+
 
 # Function to extract address parts in order from a line
 def extract_address_parts(line, parts):
@@ -41,12 +48,14 @@ def extract_address_parts(line, parts):
 
 from fuzzywuzzy import fuzz
 
+
 def extract_address_parts_fuzzy(line, parts, threshold=80):
     matched = []
     for part in parts:
         if fuzz.partial_ratio(part.lower(), line.lower()) >= threshold:
             matched.append(part)
     return matched
+
 
 def run_workflow(text: str):
     # Step 1: Extract all components
@@ -70,4 +79,3 @@ def run_workflow(text: str):
         print(f"Address {i}: {addr}")
         addresses.append(addr)
     return addresses
-

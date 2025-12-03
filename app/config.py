@@ -3,6 +3,7 @@ from typing import List
 import logging
 import sys
 
+
 class Settings(BaseSettings):
     app_name: str = "Adress Validation API"
     app_description: str = "API to validate and complete addresses using RAG approach"
@@ -10,15 +11,16 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     allowed_origins: List[str] = ["*"]
     debug: bool = False  # Default to False for production safety
-    
+
     qdrant_host: str
     qdrant_port: int
+    qdrant_url: str
+    qdrant_api_key: str
     ollama_host: str
     chat_model: str
     embedding_model: str
     collection_name: str
 
-    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -34,7 +36,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[logging.StreamHandler(sys.stdout)],  # Explicit stdout
-    force=True  # Override any existing configuration
+    force=True,  # Override any existing configuration
 )
 
 # Create a logger instance for config
