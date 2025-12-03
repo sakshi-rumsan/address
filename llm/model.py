@@ -31,7 +31,21 @@ User query:
 Provide your response markdown format in New Zealand address format with comma as separators instead of \n along with confidence score out of 100. No need to provide any explanations.
 """
 
+GREETING_PROMPT = """You are a friendly AI assistant for an Address Validation system.
+
+User query:
+{user_query}
+
+The user has sent a greeting. Respond warmly and briefly explain what you can help them with:
+- Validate and complete partial addresses in New Zealand
+- Correct address formatting
+- Provide confidence scores for address matches
+- Help find the right address from incomplete information
+
+Keep your response friendly, concise, and encouraging them to share an address they need help with."""
+
 prompt_template = PromptTemplate.from_template(MPLIFY_150_PROMPT)
+greeting_template = PromptTemplate.from_template(GREETING_PROMPT)
 
 
 def get_conversation_history(session_id: str, limit: int = 5) -> str:
@@ -80,6 +94,33 @@ def save_to_history(
         db.close()
 
 
+def is_greeting(query: str) -> bool:
+    """Check if the query is a greeting."""
+    greetings = [
+        "hi",
+        "hello",
+        "hey",
+        "greetings",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "howdy",
+        "hola",
+        "namaste",
+        "yo",
+        "sup",
+        "what's up",
+        "whats up",
+        "hi there",
+        "hello there",
+    ]
+    query_lower = query.lower().strip()
+    return (
+        any(greeting in query_lower for greeting in greetings)
+        and len(query.split()) <= 5
+    )
+
+
 def rag_address_query(
     partial_address: str, user_query: str, session_id: Optional[str] = None
 ) -> str:
@@ -94,6 +135,20 @@ def rag_address_query(
     Returns:
         LLM-generated response as text
     """
+    # Check if this is a greeting
+    if is_greeting(user_query):
+        prompt_text = greeting_template.format(user_query=user_query)
+        response = llm.invoke(prompt_text)
+        if hasattr(response, "content"):
+            response_text = response.content
+        else:
+            response_text = str(response)
+
+        if session_id:
+            save_to_history(session_id, user_query, response_text, score="N/A")
+
+        return response_text
+
     # Retrieve conversation history if session_id provided
     history_context = (
         get_conversation_history(session_id, limit=3)
