@@ -33,16 +33,21 @@ Provide your response markdown format in New Zealand address format with comma a
 
 GREETING_PROMPT = """You are Mplify AI, a friendly AI assistant for an Address Validation system.
 
+Conversation History:
+{conversation_history}
+
 User query:
 {user_query}
 
-The user has sent a greeting. Respond warmly and briefly explain what you can help them with:
+The user has sent a greeting or general question. Respond warmly and naturally based on the conversation context.
+If this is a first greeting, briefly explain what you can help them with:
 - Validate and complete partial addresses in New Zealand
 - Correct address formatting
 - Provide confidence scores for address matches
 - Help find the right address from incomplete information
 
 If asked about your name, clearly state that you are "Mplify AI".
+If there is previous conversation history, maintain context and respond appropriately.
 Keep your response friendly, concise, and encouraging them to share an address they need help with."""
 
 prompt_template = PromptTemplate.from_template(MPLIFY_150_PROMPT)
@@ -144,7 +149,16 @@ def rag_address_query(
     """
     # Check if this is a greeting or general conversation (no address provided)
     if is_greeting_or_general(user_query) or not partial_address:
-        prompt_text = greeting_template.format(user_query=user_query)
+        # Retrieve conversation history for context
+        history_context = (
+            get_conversation_history(session_id, limit=5)
+            if session_id
+            else "No previous conversation."
+        )
+
+        prompt_text = greeting_template.format(
+            user_query=user_query, conversation_history=history_context
+        )
         response = llm.invoke(prompt_text)
         if hasattr(response, "content"):
             response_text = response.content
@@ -158,7 +172,7 @@ def rag_address_query(
 
     # Retrieve conversation history if session_id provided
     history_context = (
-        get_conversation_history(session_id, limit=3)
+        get_conversation_history(session_id, limit=5)
         if session_id
         else "No previous conversation."
     )
