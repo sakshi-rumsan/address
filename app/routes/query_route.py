@@ -31,12 +31,26 @@ async def query_address_endpoint(request: RAGQueryRequest):
 
         print("Final Qdrant Results:", result)
 
-        # Fallback vector search if no results
+        # Check if any address was detected
+        has_address = bool(
+            result
+            and any(isinstance(item, dict) and item.get("results") for item in result)
+        )
+
+        # If no address detected, have a conversation instead
+        if not has_address:
+            llm_response = rag_address_query("", request.query, request.session_id)
+            return {
+                "llm_response": str(llm_response).strip(),
+                "extracted_address_matches": [],
+            }
+
+        # Fallback vector search if no results but address was detected
         if not result:
             results, query_result_array = await vector_search(request.query, 5)
             result = results + query_result_array  # assuming both are lists
 
-        # Call your RAG/LLM query
+        # Call your RAG/LLM query with address results
         llm_response = rag_address_query(str(result), request.query, request.session_id)
 
         # Return properly formatted dict

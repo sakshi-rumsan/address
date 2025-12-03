@@ -31,7 +31,7 @@ User query:
 Provide your response markdown format in New Zealand address format with comma as separators instead of \n along with confidence score out of 100. No need to provide any explanations.
 """
 
-GREETING_PROMPT = """You are a friendly AI assistant for an Address Validation system.
+GREETING_PROMPT = """You are Mplify AI, a friendly AI assistant for an Address Validation system.
 
 User query:
 {user_query}
@@ -42,6 +42,7 @@ The user has sent a greeting. Respond warmly and briefly explain what you can he
 - Provide confidence scores for address matches
 - Help find the right address from incomplete information
 
+If asked about your name, clearly state that you are "Mplify AI".
 Keep your response friendly, concise, and encouraging them to share an address they need help with."""
 
 prompt_template = PromptTemplate.from_template(MPLIFY_150_PROMPT)
@@ -94,8 +95,8 @@ def save_to_history(
         db.close()
 
 
-def is_greeting(query: str) -> bool:
-    """Check if the query is a greeting."""
+def is_greeting_or_general(query: str) -> bool:
+    """Check if the query is a greeting or general conversation."""
     greetings = [
         "hi",
         "hello",
@@ -113,12 +114,18 @@ def is_greeting(query: str) -> bool:
         "whats up",
         "hi there",
         "hello there",
+        "who are you",
+        "what is your name",
+        "what's your name",
+        "what can you do",
+        "help",
+        "thank you",
+        "thanks",
+        "bye",
+        "goodbye",
     ]
     query_lower = query.lower().strip()
-    return (
-        any(greeting in query_lower for greeting in greetings)
-        and len(query.split()) <= 5
-    )
+    return any(greeting in query_lower for greeting in greetings)
 
 
 def rag_address_query(
@@ -135,8 +142,8 @@ def rag_address_query(
     Returns:
         LLM-generated response as text
     """
-    # Check if this is a greeting
-    if is_greeting(user_query):
+    # Check if this is a greeting or general conversation (no address provided)
+    if is_greeting_or_general(user_query) or not partial_address:
         prompt_text = greeting_template.format(user_query=user_query)
         response = llm.invoke(prompt_text)
         if hasattr(response, "content"):
