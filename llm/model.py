@@ -28,7 +28,7 @@ Correct address:
 User query:
 {user_query}
 
-Provide your response as a conversation-style answer.
+Provide your response markdown format in New Zealand address format with comma as separators instead of \n along with confidence score out of 100. No need to provide any explanations.
 """
 
 prompt_template = PromptTemplate.from_template(MPLIFY_150_PROMPT)
@@ -92,7 +92,7 @@ def rag_address_query(
         session_id: Optional session ID for conversation memory
 
     Returns:
-        LLM-generated response as text.
+        LLM-generated response as text
     """
     # Retrieve conversation history if session_id provided
     history_context = (

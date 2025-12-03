@@ -36,14 +36,12 @@ async def query_address_endpoint(request: RAGQueryRequest):
             results, query_result_array = await vector_search(request.query, 5)
             result = results + query_result_array  # assuming both are lists
 
-        # Call your RAG/LLM query (await if async)
-        llm_response = await rag_address_query(
-            str(result), request.query, request.session_id
-        )
+        # Call your RAG/LLM query
+        llm_response = rag_address_query(str(result), request.query, request.session_id)
 
         # Return properly formatted dict
         return {
-            "llm_response": str(llm_response),
+            "llm_response": str(llm_response).strip(),
             "extracted_address_matches": result,  # always list of dicts
         }
 
